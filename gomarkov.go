@@ -1,7 +1,6 @@
 package gomarkov
 
 import (
-	"fmt"
 	"rand"
 	"regexp"
 	"strings"
@@ -13,10 +12,16 @@ const (
 	WORDS_IN_SENTANCE = 25
 )
 
-var mchain = make(map[string][]string)
-var beginnings = make([]triple, 0, 4)
 
-func ProcessString(data string) string {
+type Mchain struct {
+	Mchain map[string][]string
+	Beginnings []triple
+}
+
+func ProcessString(data string) *Mchain {
+	var m = new(Mchain)
+	m.init()
+
 	re, _ := regexp.Compile("\n+")
 	re2, _ := regexp.Compile("[ ]+")
 
@@ -26,32 +31,33 @@ func ProcessString(data string) string {
 	for _, paragraph := range strings.Split(cleanedText, "\n", -1) {
 		words := strings.Split(paragraph, " ", -1)
 		if len(words) > 2 {
-			addBeginning(words[0], words[1])
+			m.addBeginning(words[0], words[1])
 		}
 		for _, word := range words {
 			t.addWord(word)
-			t.addToChain()
+			m.addToChain(t)
 		}
 	}
-
-	return re.ReplaceAllString(data, "\n")
+	
+	return m
 }
 
-func Generate(count int) {
+func Generate(m *Mchain, count int) string {
 	rand.Seed(time.Nanoseconds())
-	t := beginnings[rand.Intn(len(beginnings)-1)]
+	t := m.Beginnings[rand.Intn(len(m.Beginnings)-1)]
 	first, second := t.First, t.Second
 
-	fmt.Printf("%s %s ", first, second)
+	ret := make([]string, count, count)
+	ret[0] = t.First; ret[1] = t.Second
 
 	var word string
-	for i := 0; i < count; i++ {
+	for i := 2; i < count; i++ {
 		t := &triple{first, second, "", nil}
-		word = t.getThird()
+		word = m.getThird(t)
 		first, second = second, word
-		fmt.Printf("%s ", word)
+		ret[i] = word
 		if word == "" {
-			return
+			return strings.Join(ret, " ")
 		}
 		if char := word[len(word)-1]; char == '.' {
 			if i+WORDS_IN_SENTANCE >= count {
@@ -59,15 +65,53 @@ func Generate(count int) {
 			}
 		}
 	}
-	fmt.Println()
+	return strings.Join(ret, " ")
 }
 
-func addBeginning(first, second string) {
+
+func (m *Mchain) addBeginning(first, second string) {
 	var t triple
 	t.First = first
 	t.Second = second
-	beginnings = append(beginnings, t)
+	m.Beginnings = append(m.Beginnings, t)
 }
+
+
+func (m *Mchain) addToChain(t triple) {
+	if t.First == "" || t.Second == "" || t.Third == "" {
+		return
+	}
+	var newvec []string
+	vec, present := m.Mchain[t.First+" "+t.Second]
+	if !present || len(vec) == 0 {
+		newvec = make([]string, 1, 1)
+		newvec[0] = t.Third
+	} else {
+		newvec = make([]string, len(vec)+1, len(vec)+1)
+		copy(newvec, vec)
+		newvec[len(vec)-1] = t.Third
+	}
+	m.Mchain[t.First+" "+t.Second] = newvec
+}
+
+
+func (m *Mchain) getThird(t *triple) string {
+	if t.First == "" || t.Second == "" {
+		return ""
+	}
+	vec := m.Mchain[t.First+" "+t.Second]
+	if len(vec) == 0 {
+		return ""
+	}
+	return vec[rand.Intn(len(vec)-1)]
+}
+
+
+func (m *Mchain) init() {
+	m.Beginnings = make([]triple, 0, 4)
+	m.Mchain = make(map[string][]string)
+}
+
 
 func append(ar []triple, t triple) []triple {
 	n := len(ar)
@@ -80,3 +124,5 @@ func append(ar []triple, t triple) []triple {
 	ar[n] = t
 	return ar
 }
+
+

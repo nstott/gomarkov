@@ -1,7 +1,7 @@
 package gomarkov
 
 import (
-	"rand"
+//	"rand"
 	"fmt"
 )
 
@@ -30,35 +30,6 @@ func (t *triple) addWord(s string) {
 		t.Third = s
 	}
 }
-
-func (t *triple) addToChain() {
-	if t.First == "" || t.Second == "" || t.Third == "" {
-		return
-	}
-	var newvec []string
-	vec, present := mchain[t.First+" "+t.Second]
-	if !present || len(vec) == 0 {
-		newvec = make([]string, 1, 1)
-		newvec[0] = t.Third
-	} else {
-		newvec = make([]string, len(vec)+1, len(vec)+1)
-		copy(newvec, vec)
-		newvec[len(vec)-1] = t.Third
-	}
-	mchain[t.First+" "+t.Second] = newvec
-}
-
-func (t *triple) getThird() string {
-	if t.First == "" || t.Second == "" {
-		return ""
-	}
-	vec := mchain[t.First+" "+t.Second]
-	if len(vec) == 0 {
-		return ""
-	}
-	return vec[rand.Intn(len(vec)-1)]
-}
-
 
 /* String() functions */
 func (t *triple) String() {
